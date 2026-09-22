@@ -1,0 +1,36 @@
+name: Sincronizza Notion e pubblica Litha
+
+on:
+  # Esegue lo script una volta al giorno, alle 6:00 UTC (le 7:00 o 8:00 in
+  # Italia, a seconda dell'ora legale). Modifica l'orario se preferisci un
+  # altro momento della giornata: https://crontab.guru
+  schedule:
+    - cron: "0 4 * * *"
+
+  # Ti permette anche di lanciarlo a mano dalla tab "Actions" su GitHub,
+  # utile per testare senza aspettare il prossimo orario schedulato.
+  workflow_dispatch: {}
+
+jobs:
+  sync-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica il codice del repository
+        uses: actions/checkout@v4
+
+      - name: Imposta Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installa le dipendenze
+        run: npm install
+
+      - name: Esegui la sincronizzazione e pubblicazione
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FRAMER_API_KEY: ${{ secrets.FRAMER_API_KEY }}
+          FRAMER_PROJECT_URL: ${{ secrets.FRAMER_PROJECT_URL }}
+          FRAMER_COLLECTION_ID: ${{ secrets.FRAMER_COLLECTION_ID }}
+        run: npm run sync
