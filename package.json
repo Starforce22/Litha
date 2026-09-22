@@ -1,0 +1,14 @@
+{
+  "name": "litha-auto-publish",
+  "version": "1.0.0",
+  "description": "Sincronizza Notion con il CMS di Framer e pubblica automaticamente il sito Litha",
+  "type": "module",
+  "scripts": {
+    "sync": "node sync-and-publish.mjs",
+    "list-fields": "node list-fields.mjs"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "framer-api": "latest"
+  }
+}
