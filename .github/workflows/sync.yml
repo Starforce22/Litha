@@ -5,7 +5,7 @@ on:
   # Italia, a seconda dell'ora legale). Modifica l'orario se preferisci un
   # altro momento della giornata: https://crontab.guru
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "0 6 * * *"
 
   # Ti permette anche di lanciarlo a mano dalla tab "Actions" su GitHub,
   # utile per testare senza aspettare il prossimo orario schedulato.
@@ -21,7 +21,7 @@ jobs:
       - name: Imposta Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Installa le dipendenze
         run: npm install
