@@ -78,16 +78,51 @@ const ENUM_FIELD_IDS = new Set([
 const FRAMER_STATO_FIELD_ID = "tTqa";
 const FRAMER_STATO_VALORE_PUBBLICATO = "Pubblicato"; // deve combaciare col nome esatto dell'opzione su Framer
 
-// Nome della proprietà Notion (tipo "Status" o "Checkbox") che indica se un
-// articolo è pronto per essere pubblicato. Lo script sincronizza SOLO le
-// righe che risultano pubblicabili secondo questa proprietà.
-const NOTION_PUBLISHED_PROPERTY = "Pubblicato"; // adatta al nome reale
+// Nome della proprietà Notion che indica se un articolo è pronto per essere
+// pubblicato, e valore che deve avere per considerarlo tale. Lo script
+// rileva da solo se la proprietà è di tipo "status" o "select" (i due tipi
+// più comuni per una colonna con opzioni tipo Bozza/Pubblicato).
+const NOTION_PUBLISHED_PROPERTY = "Stato";
+const NOTION_PUBLISHED_VALUE = "Pubblicato";
 
 // ---------------------------------------------------------------------------
 // 3. LETTURA DA NOTION
 // ---------------------------------------------------------------------------
 
 async function getPublishableNotionPages(notion) {
+  const database = await notion.databases.retrieve({
+    database_id: NOTION_DATABASE_ID,
+  });
+
+  const property = database.properties[NOTION_PUBLISHED_PROPERTY];
+  if (!property) {
+    throw new Error(
+      `La proprietà "${NOTION_PUBLISHED_PROPERTY}" non esiste sul database Notion. ` +
+        `Controlla il nome esatto con list-notion-properties.mjs.`
+    );
+  }
+
+  // Costruiamo il filtro giusto a seconda del tipo reale della proprietà.
+  let filter;
+  if (property.type === "checkbox") {
+    filter = { property: NOTION_PUBLISHED_PROPERTY, checkbox: { equals: true } };
+  } else if (property.type === "status") {
+    filter = {
+      property: NOTION_PUBLISHED_PROPERTY,
+      status: { equals: NOTION_PUBLISHED_VALUE },
+    };
+  } else if (property.type === "select") {
+    filter = {
+      property: NOTION_PUBLISHED_PROPERTY,
+      select: { equals: NOTION_PUBLISHED_VALUE },
+    };
+  } else {
+    throw new Error(
+      `Tipo di proprietà "${property.type}" non gestito per "${NOTION_PUBLISHED_PROPERTY}". ` +
+        `Aggiungi un case per questo tipo dentro getPublishableNotionPages.`
+    );
+  }
+
   const pages = [];
   let cursor = undefined;
 
@@ -95,10 +130,7 @@ async function getPublishableNotionPages(notion) {
     const response = await notion.databases.query({
       database_id: NOTION_DATABASE_ID,
       start_cursor: cursor,
-      filter: {
-        property: NOTION_PUBLISHED_PROPERTY,
-        checkbox: { equals: true },
-      },
+      filter,
     });
     pages.push(...response.results);
     cursor = response.has_more ? response.next_cursor : undefined;
