@@ -44,13 +44,13 @@ function requireEnv(name) {
 // ---------------------------------------------------------------------------
 
 const FIELD_MAP = {
-  Titolo: "title",
-  Estratto: "HOSi",
-  Categoria: "Qi%3Ek",
-  "Data di pubblicazione": "GuES",
-  Copertina: "LgrJ",
-  Slug: "_S%40W",
-  Autore: "yhUL",
+  Titolo: "TODO_AGGIORNA_DOPO_FIX_TITOLO", // vedi fix-add-title-field.mjs
+  Estratto: "HI2mtYr87",
+  Categoria: "yDTLObBo6",
+  "Data di pubblicazione": "HmUZDQnsm",
+  Copertina: "HcIoGcJgE",
+  Slug: "mQ9xbTI8t",
+  Autore: "ElHA9CYzt",
 };
 
 // Il campo "Contenuto" è un caso speciale: nella maggior parte dei database
@@ -58,7 +58,7 @@ const FIELD_MAP = {
 // della pagina stessa (i blocchi che scrivi aprendo la riga). Per questo lo
 // script lo gestisce a parte, leggendo i blocchi della pagina invece di una
 // proprietà — vedi getPageBodyAsMarkdown più sotto.
-const FRAMER_CONTENT_FIELD_ID = "page-content";
+const FRAMER_CONTENT_FIELD_ID = "cSe1aZScB";
 
 // Campi che su Framer sono di tipo "enum": per questi non si può scrivere il
 // testo libero, ma serve l'ID dell'opzione corrispondente. Lo script lo
@@ -66,15 +66,15 @@ const FRAMER_CONTENT_FIELD_ID = "page-content";
 // scritto su Notion corrisponda ESATTAMENTE (stessa scrittura, maiuscole
 // comprese) al nome di una delle opzioni già create su Framer.
 const ENUM_FIELD_IDS = new Set([
-  "Qi%3Ek", // Categoria
-  "tTqa", // Stato
+  "yDTLObBo6", // Categoria
+  "KbxpGcjwm", // Stato
 ]);
 
 // Il campo "Stato" della Collection non arriva da Notion: dato che lo script
 // sincronizza SOLO gli articoli già marcati come pronti (vedi
 // NOTION_PUBLISHED_PROPERTY più sotto), ogni item sincronizzato viene sempre
 // impostato su questo valore, così diventa visibile sul sito.
-const FRAMER_STATO_FIELD_ID = "tTqa";
+const FRAMER_STATO_FIELD_ID = "KbxpGcjwm";
 const FRAMER_STATO_VALORE_PUBBLICATO = "Pubblicato"; // deve combaciare col nome esatto dell'opzione su Framer
 
 // Nome della proprietà Notion che indica se un articolo è pronto per essere

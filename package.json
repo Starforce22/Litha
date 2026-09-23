@@ -7,7 +7,8 @@
     "sync": "node sync-and-publish.mjs",
     "list-fields": "node list-fields.mjs",
     "list-notion-properties": "node list-notion-properties.mjs",
-    "create-collection": "node create-collection.mjs"
+    "create-collection": "node create-collection.mjs",
+    "fix-add-title-field": "node fix-add-title-field.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.15",
