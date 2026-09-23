@@ -44,7 +44,7 @@ function requireEnv(name) {
 // ---------------------------------------------------------------------------
 
 const FIELD_MAP = {
-  Titolo: "TODO_AGGIORNA_DOPO_FIX_TITOLO", // vedi fix-add-title-field.mjs
+  Titolo: "DNjJrqRRS",
   Estratto: "HI2mtYr87",
   Categoria: "yDTLObBo6",
   "Data di pubblicazione": "HmUZDQnsm",
