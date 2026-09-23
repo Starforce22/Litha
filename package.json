@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "sync": "node sync-and-publish.mjs",
-    "list-fields": "node list-fields.mjs"
+    "list-fields": "node list-fields.mjs",
+    "list-notion-properties": "node list-notion-properties.mjs",
+    "create-collection": "node create-collection.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.15",
-    "framer-api": "latest"
+    "framer-api": "^5.0.0"
   }
 }
