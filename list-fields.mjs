@@ -31,6 +31,15 @@ try {
     const fields = await collection.getFields();
     for (const field of fields) {
       console.log(`    campo "${field.name}"  →  id: ${field.id}  (tipo: ${field.type})`);
+      if (field.type === "enum") {
+        const cases = field.cases ?? field.options ?? [];
+        if (cases.length === 0) {
+          console.log(`        ⚠️ nessuna opzione definita per questo campo`);
+        }
+        for (const c of cases) {
+          console.log(`        opzione: "${c.name}"  (id: ${c.id})`);
+        }
+      }
     }
     console.log("");
   }
