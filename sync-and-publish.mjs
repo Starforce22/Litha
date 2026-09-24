@@ -261,7 +261,7 @@ function wrapFieldValue(framerFieldType, rawValue) {
 // 4. COSTRUZIONE DEGLI ITEM PER FRAMER
 // ---------------------------------------------------------------------------
 
-async function buildFramerItems(notion, notionPages, enumLookup, fieldTypes) {
+async function buildFramerItems(notion, notionPages, enumLookup, fieldTypes, existingIdsBySlug) {
   const items = [];
 
   for (const page of notionPages) {
@@ -318,12 +318,19 @@ async function buildFramerItems(notion, notionPages, enumLookup, fieldTypes) {
       (p) => p.type === "title"
     );
     const title = titleProperty ? extractPlainValue(titleProperty) : page.id;
+    const slug = slugify(title);
 
-    items.push({
-      id: `notion-${page.id.replace(/-/g, "")}`,
-      slug: slugify(title),
-      fieldData,
-    });
+    // Su una Collection normale (non gestita), addItems tratta l'id in
+    // modo diverso da come funziona sulle Managed Collection: un id
+    // "inventato" da noi che non esiste già viene rifiutato. Quindi lo
+    // includiamo SOLO se esiste già un item con lo stesso slug (per
+    // aggiornarlo); per i nuovi articoli lo omettiamo del tutto e lasciamo
+    // che sia Framer ad assegnarne uno.
+    const item = { slug, fieldData };
+    const existingId = existingIdsBySlug.get(slug);
+    if (existingId) item.id = existingId;
+
+    items.push(item);
   }
 
   return items;
@@ -373,8 +380,12 @@ async function main() {
     console.log("→ Leggo i tipi di campo e le opzioni (es. Categoria, Stato)...");
     const { fieldTypes, enumLookup } = await getCollectionMeta(collection);
 
+    console.log("→ Leggo gli item già presenti nella Collection (per capire cosa aggiornare)...");
+    const existingItems = await collection.getItems();
+    const existingIdsBySlug = new Map(existingItems.map((item) => [item.slug, item.id]));
+
     console.log("→ Leggo il corpo di ogni articolo da Notion...");
-    const items = await buildFramerItems(notion, notionPages, enumLookup, fieldTypes);
+    const items = await buildFramerItems(notion, notionPages, enumLookup, fieldTypes, existingIdsBySlug);
 
     console.log(`→ Scrivo ${items.length} item nella Collection Framer...`);
     await collection.addItems(items);
