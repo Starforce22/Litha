@@ -6,6 +6,7 @@ on:
   # altro momento della giornata: https://crontab.guru
   schedule:
     - cron: "0 6 * * *"
+    - cron: "0 20 * * *"
 
   # Ti permette anche di lanciarlo a mano dalla tab "Actions" su GitHub,
   # utile per testare senza aspettare il prossimo orario schedulato.
