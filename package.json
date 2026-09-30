@@ -8,10 +8,12 @@
     "list-fields": "node list-fields.mjs",
     "list-notion-properties": "node list-notion-properties.mjs",
     "create-collection": "node create-collection.mjs",
-    "fix-add-title-field": "node fix-add-title-field.mjs"
+    "fix-add-title-field": "node fix-add-title-field.mjs",
+    "setup-numero-field": "node setup-numero-field.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.15",
-    "framer-api": "^5.0.0"
+    "framer-api": "^5.0.0",
+    "sharp": "^0.33.5"
   }
 }

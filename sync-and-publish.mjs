@@ -11,6 +11,7 @@
 
 import { Client as NotionClient } from "@notionhq/client";
 import { connect } from "framer-api";
+import sharp from "sharp";
 
 // ---------------------------------------------------------------------------
 // 1. CONFIGURAZIONE — questi valori arrivano da variabili d'ambiente (mai
@@ -23,6 +24,15 @@ const NOTION_DATABASE_ID = requireEnv("NOTION_DATABASE_ID");
 const FRAMER_API_KEY = requireEnv("FRAMER_API_KEY");
 const FRAMER_PROJECT_URL = requireEnv("FRAMER_PROJECT_URL"); // es. https://framer.com/projects/xxxxx
 const FRAMER_COLLECTION_ID = requireEnv("FRAMER_COLLECTION_ID");
+
+// Servono per "mirrorare" le immagini di copertina su GitHub in modo
+// permanente, dato che i link di Notion scadono dopo circa un'ora. Su
+// GitHub Actions, GITHUB_REPOSITORY è già disponibile in automatico; basta
+// passare esplicitamente GITHUB_TOKEN (il token integrato di Actions, non
+// serve crearne uno nuovo) — vedi README.md per come abilitarlo.
+const GITHUB_TOKEN = requireEnv("GITHUB_TOKEN");
+const GITHUB_REPOSITORY = requireEnv("GITHUB_REPOSITORY"); // formato "utente/repo"
+const GITHUB_BRANCH = process.env.GITHUB_ASSET_BRANCH || "main";
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -51,6 +61,7 @@ const FIELD_MAP = {
   Copertina: "HcIoGcJgE",
   Slug: "mQ9xbTI8t",
   Autore: "ElHA9CYzt",
+  Numero: "TODO_AGGIORNA_DOPO_SETUP_NUMERO",
 };
 
 // Il campo "Contenuto" è un caso speciale: nella maggior parte dei database
@@ -82,6 +93,18 @@ const FRAMER_STATO_VALORE_PUBBLICATO = "Pubblicato"; // deve combaciare col nome
 // rileva da solo se la proprietà è di tipo "status" o "select".
 const NOTION_PUBLISHED_PROPERTY = "Stato";
 const NOTION_PUBLISHED_VALUE = "Pubblicato";
+
+// Numerazione automatica progressiva ("stile Pokédex"): il numero viene
+// assegnato UNA SOLA VOLTA per articolo e scritto permanentemente su questa
+// proprietà Notion, così resta stabile anche nei sync futuri. Va creata con
+// setup-numero-field.mjs prima di usare questa funzionalità.
+const NOTION_NUMBER_PROPERTY = "Numero";
+// Proprietà usata per decidere l'ordine con cui assegnare i numeri ai nuovi
+// articoli (i più vecchi ricevono i numeri più bassi).
+const NOTION_DATE_PROPERTY_FOR_ORDERING = "Data di pubblicazione";
+// ID del campo Framer "NumeroDisplay" (testo già formattato, es. "#007").
+// Aggiornalo dopo aver lanciato setup-numero-field.mjs + list-fields.mjs.
+const FRAMER_NUMERO_DISPLAY_FIELD_ID = "TODO_AGGIORNA_DOPO_SETUP_NUMERO";
 
 // ---------------------------------------------------------------------------
 // 3. LETTURA DA NOTION
@@ -134,6 +157,44 @@ async function getPublishableNotionPages(notion) {
   } while (cursor);
 
   return pages;
+}
+
+// Assegna un numero progressivo a ogni pagina che non ne ha ancora uno,
+// scrivendolo PERMANENTEMENTE su Notion (non viene mai ricalcolato dopo).
+// I nuovi articoli vengono numerati in ordine di data di pubblicazione,
+// proseguendo dal numero più alto già assegnato finora.
+async function assignArticleNumbers(notion, pages) {
+  const withNumber = pages.filter(
+    (p) => p.properties[NOTION_NUMBER_PROPERTY]?.number != null
+  );
+  const withoutNumber = pages.filter(
+    (p) => p.properties[NOTION_NUMBER_PROPERTY]?.number == null
+  );
+
+  let currentMax = withNumber.reduce(
+    (max, p) => Math.max(max, p.properties[NOTION_NUMBER_PROPERTY].number),
+    0
+  );
+
+  withoutNumber.sort((a, b) => {
+    const dateA =
+      a.properties[NOTION_DATE_PROPERTY_FOR_ORDERING]?.date?.start ?? a.created_time;
+    const dateB =
+      b.properties[NOTION_DATE_PROPERTY_FOR_ORDERING]?.date?.start ?? b.created_time;
+    return new Date(dateA) - new Date(dateB);
+  });
+
+  for (const page of withoutNumber) {
+    currentMax += 1;
+    console.log(`  assegno il numero ${currentMax} alla pagina ${page.id}`);
+    await notion.pages.update({
+      page_id: page.id,
+      properties: { [NOTION_NUMBER_PROPERTY]: { number: currentMax } },
+    });
+    // Aggiorniamo anche l'oggetto in memoria, così il resto dello script
+    // vede subito il valore senza dover rileggere da Notion.
+    page.properties[NOTION_NUMBER_PROPERTY] = { type: "number", number: currentMax };
+  }
 }
 
 // Legge tutti i blocchi del corpo di una pagina Notion e li converte in un
@@ -228,6 +289,71 @@ function slugify(text) {
     .replace(/^-+|-+$/g, "");
 }
 
+// ---------------------------------------------------------------------------
+// MIRRORING DELLE IMMAGINI SU GITHUB
+//
+// I link ai file caricati su Notion sono temporanei (scadono dopo circa
+// un'ora). Per non ritrovarsi con copertine rotte, questa funzione scarica
+// l'immagine, la ottimizza (ridimensiona + converte in WebP compresso), e la
+// carica in modo permanente dentro il repository stesso, sotto la cartella
+// assets/covers/. Restituisce l'URL pubblico e stabile su
+// raw.githubusercontent.com da passare a Framer al posto del link Notion.
+// ---------------------------------------------------------------------------
+
+const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
+const MAX_IMAGE_WIDTH = 1600; // px: oltre non serve, per un blog è già di più del necessario
+const IMAGE_QUALITY = 80; // 0-100: buon compromesso qualità/peso per WebP
+
+async function mirrorImageToGitHub(sourceUrl, assetPath) {
+  const response = await fetch(sourceUrl);
+  if (!response.ok) {
+    throw new Error(`Impossibile scaricare l'immagine da Notion: ${response.status}`);
+  }
+  const originalBuffer = Buffer.from(await response.arrayBuffer());
+
+  const optimizedBuffer = await sharp(originalBuffer)
+    .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+    .webp({ quality: IMAGE_QUALITY })
+    .toBuffer();
+
+  // Se il file esiste già (da un sync precedente), serve il suo "sha"
+  // corrente per poterlo sovrascrivere: GitHub lo richiede per evitare
+  // sovrascritture accidentali fatte "alla cieca".
+  let existingSha;
+  const getResponse = await fetch(`${GITHUB_API_BASE}/contents/${assetPath}`, {
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+  if (getResponse.ok) {
+    existingSha = (await getResponse.json()).sha;
+  } else if (getResponse.status !== 404) {
+    throw new Error(`Errore nel controllare il file esistente su GitHub: ${getResponse.status}`);
+  }
+
+  const putResponse = await fetch(`${GITHUB_API_BASE}/contents/${assetPath}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+    },
+    body: JSON.stringify({
+      message: `Aggiorna asset immagine: ${assetPath}`,
+      content: optimizedBuffer.toString("base64"),
+      branch: GITHUB_BRANCH,
+      ...(existingSha ? { sha: existingSha } : {}),
+    }),
+  });
+
+  if (!putResponse.ok) {
+    const body = await putResponse.text();
+    throw new Error(`Errore nel caricare l'immagine su GitHub: ${putResponse.status} — ${body}`);
+  }
+
+  return `https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_BRANCH}/${assetPath}`;
+}
+
 // Avvolge un valore "nudo" nel formato { type, value } richiesto da Framer
 // per ogni campo del CMS. È il pezzo che mancava e causava l'errore
 // "invalid type on ... fieldData".
@@ -290,6 +416,22 @@ async function buildFramerItems(notion, notionPages, enumLookup, fieldTypes, exi
         value = optionId;
       }
 
+      // Le immagini vengono "mirrorate" su GitHub: il link di Notion scade
+      // dopo circa un'ora, quindi non possiamo passarlo direttamente a
+      // Framer così com'è.
+      if (fieldTypes[framerFieldId] === "image" && typeof value === "string" && value) {
+        const assetPath = `assets/covers/notion-${page.id.replace(/-/g, "")}.webp`;
+        try {
+          value = await mirrorImageToGitHub(value, assetPath);
+        } catch (error) {
+          console.warn(
+            `Impossibile mirrorare l'immagine per la pagina ${page.id}: ${error.message}. ` +
+              `Il campo verrà saltato per questo sync.`
+          );
+          continue;
+        }
+      }
+
       const wrapped = wrapFieldValue(fieldTypes[framerFieldId], value);
       if (wrapped) fieldData[framerFieldId] = wrapped;
     }
@@ -300,6 +442,16 @@ async function buildFramerItems(notion, notionPages, enumLookup, fieldTypes, exi
       fieldData[FRAMER_CONTENT_FIELD_ID] = wrapFieldValue(
         fieldTypes[FRAMER_CONTENT_FIELD_ID],
         bodyMarkdown
+      );
+    }
+
+    // NumeroDisplay: testo già formattato (es. "#007"), comodo da mostrare
+    // direttamente su Framer senza bisogno di logica di formattazione lì.
+    const numero = page.properties[NOTION_NUMBER_PROPERTY]?.number;
+    if (numero != null) {
+      fieldData[FRAMER_NUMERO_DISPLAY_FIELD_ID] = wrapFieldValue(
+        "string",
+        `#${String(numero).padStart(3, "0")}`
       );
     }
 
@@ -365,6 +517,9 @@ async function main() {
   const notion = new NotionClient({ auth: NOTION_API_KEY });
   const notionPages = await getPublishableNotionPages(notion);
   console.log(`  trovati ${notionPages.length} articoli da sincronizzare`);
+
+  console.log("→ Assegno un numero progressivo ai nuovi articoli, se necessario...");
+  await assignArticleNumbers(notion, notionPages);
 
   if (notionPages.length === 0) {
     console.log("Nessun articolo da sincronizzare, esco senza pubblicare.");
