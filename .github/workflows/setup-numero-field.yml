@@ -1,0 +1,28 @@
+name: (Una tantum) Crea campi Numero
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  setup-numero-field:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica il codice del repository
+        uses: actions/checkout@v4
+
+      - name: Imposta Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Installa le dipendenze
+        run: npm install
+
+      - name: Crea i campi Numero
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FRAMER_API_KEY: ${{ secrets.FRAMER_API_KEY }}
+          FRAMER_PROJECT_URL: ${{ secrets.FRAMER_PROJECT_URL }}
+          FRAMER_COLLECTION_ID: ${{ secrets.FRAMER_COLLECTION_ID }}
+        run: npm run setup-numero-field
