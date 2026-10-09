@@ -1,30 +1,29 @@
 name: (Una tantum) Elenca Collection e campi Framer
- 
+
 # Questo workflow serve solo per scoprire gli ID di cui hai bisogno.
 # Lo lanci una volta, leggi il risultato nei log, e poi puoi anche
 # cancellare questo file: non serve più dopo la configurazione iniziale.
- 
+
 on:
   workflow_dispatch: {}
- 
+
 jobs:
   list-fields:
     runs-on: ubuntu-latest
     steps:
       - name: Scarica il codice del repository
         uses: actions/checkout@v4
- 
+
       - name: Imposta Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
- 
+
       - name: Installa le dipendenze
         run: npm install
- 
+
       - name: Elenca Collection e campi
         env:
           FRAMER_API_KEY: ${{ secrets.FRAMER_API_KEY }}
           FRAMER_PROJECT_URL: ${{ secrets.FRAMER_PROJECT_URL }}
         run: npm run list-fields
- 
