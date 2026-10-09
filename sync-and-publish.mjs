@@ -61,7 +61,7 @@ const FIELD_MAP = {
   Copertina: "HcIoGcJgE",
   Slug: "mQ9xbTI8t",
   Autore: "ElHA9CYzt",
-  Numero: "TODO_AGGIORNA_DOPO_SETUP_NUMERO",
+  Numero: "vQEipJzUs",
 };
 
 // Il campo "Contenuto" è un caso speciale: nella maggior parte dei database
@@ -104,7 +104,7 @@ const NOTION_NUMBER_PROPERTY = "Numero";
 const NOTION_DATE_PROPERTY_FOR_ORDERING = "Data di pubblicazione";
 // ID del campo Framer "NumeroDisplay" (testo già formattato, es. "#007").
 // Aggiornalo dopo aver lanciato setup-numero-field.mjs + list-fields.mjs.
-const FRAMER_NUMERO_DISPLAY_FIELD_ID = "TODO_AGGIORNA_DOPO_SETUP_NUMERO";
+const FRAMER_NUMERO_DISPLAY_FIELD_ID = "TuADgXxGM";
 
 // ---------------------------------------------------------------------------
 // 3. LETTURA DA NOTION
